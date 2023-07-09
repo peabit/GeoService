@@ -13,14 +13,13 @@ public sealed class OsmCoordinatesSearchService : ICoordinatesSearchService
 
     public async Task<IEnumerable<CoordinatesDto>> FindAsync(string address)
     {
+        throw new Exception("ЫВАыВаываыва");
+
         EnsureValidAddress(address);
 
         using var httpClient = _httpClientFactory.CreateClient();
 
-        var request = new HttpRequestMessage(HttpMethod.Get, $"https://nominatim.openstreetmap.org/search?q={address}&format=json")
-        {
-            Headers = { { HeaderNames.UserAgent, "Other" } }
-        };
+        var request = CreateRequest(address);
 
         using var response = await httpClient.SendAsync(request);
 
@@ -28,16 +27,12 @@ public sealed class OsmCoordinatesSearchService : ICoordinatesSearchService
 
         var rawCoordiantes = await response.Content.ReadFromJsonAsync<IEnumerable<Model>>();
 
-        var coordinates = rawCoordiantes!.Select(c => new CoordinatesDto(
-            Address: c.display_name,
-            Longitude: c.lon,
-            Latitude: c.lat
-        ));
+        var coordinates = Map(rawCoordiantes!);
 
         return coordinates;
     }
 
-    private void EnsureValidAddress(string address)
+    private static void EnsureValidAddress(string address)
     {
         if (address is null)
         {
@@ -46,9 +41,22 @@ public sealed class OsmCoordinatesSearchService : ICoordinatesSearchService
 
         if (String.IsNullOrWhiteSpace(address))
         {
-            throw new ArgumentException("Address ", nameof(address));
+            throw new ArgumentException("Address cannot be empty", nameof(address));
         }
     }
 
-    private sealed record Model(string display_name, string lat, string lon);
+    private static HttpRequestMessage CreateRequest(string address)
+        => new(HttpMethod.Get, $"https://nominatim.openstreetmap.org/search?q={address}&format=json")
+        {
+            Headers = { { HeaderNames.UserAgent, "Other" } }
+        };
+
+    private static IEnumerable<CoordinatesDto> Map(IEnumerable<Model> rawCoordiantes)
+        => rawCoordiantes!.Select(c => new CoordinatesDto(
+            Address: c.display_name,
+            Longitude: c.lon,
+            Latitude: c.lat
+        ));
+
+    private sealed record Model(string display_name, string lon, string lat);
 }

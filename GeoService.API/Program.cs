@@ -1,21 +1,51 @@
+using Serilog;
 using GeoService.API.CoordinatesSearchService;
 using GeoService.API.Infrastructure.CoordinatesSearchService;
+using Serilog.Events;
+using Serilog.Formatting.Compact;
+using Serilog.Exceptions;
 
-var builder = WebApplication.CreateBuilder(args);
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+    .Enrich.WithExceptionDetails()
+    .WriteTo.Console()
+    .WriteTo.File(new CompactJsonFormatter(), "log.txt")
+    .CreateLogger();
 
-builder.Services.AddControllers();
+try
+{
+    Log.Information("Starting web application");
 
-builder.Services.AddSwaggerGen();
+    var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddHttpClient();
+    builder.Host.UseSerilog();
 
-builder.Services.AddScoped<ICoordinatesSearchService, OsmCoordinatesSearchService>();
+    builder.Services.AddControllers();
 
-var app = builder.Build();
+    builder.Services.AddSwaggerGen();
 
-app.UseSwagger();
-app.UseSwaggerUI();
+    builder.Services.AddHttpClient();
 
-app.MapControllers();
+    builder.Services.AddScoped<ICoordinatesSearchService, OsmCoordinatesSearchService>();
 
-app.Run();
+    var app = builder.Build();
+
+    app.UseSerilogRequestLogging();
+
+    app.UseSwagger();
+    app.UseSwaggerUI();
+
+    app.MapControllers();
+
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
+
