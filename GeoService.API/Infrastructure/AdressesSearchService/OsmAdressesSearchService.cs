@@ -1,25 +1,22 @@
-﻿using GeoService.API.CoordinatesProvider;
-using GeoService.API.CoordinatesSearchService;
+﻿using GeoService.API.Domain.AdressesSearchService;
 using Microsoft.Net.Http.Headers;
 
 namespace GeoService.API.Infrastructure.CoordinatesSearchService;
 
-public sealed class OsmCoordinatesSearchService : ICoordinatesSearchService
+public sealed class OsmAdressesSearchService : IAdressesSearchService
 {
     private readonly IHttpClientFactory _httpClientFactory;
 
-    public OsmCoordinatesSearchService(IHttpClientFactory httpClientFactory)
+    public OsmAdressesSearchService(IHttpClientFactory httpClientFactory)
         => _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
 
-    public async Task<IEnumerable<CoordinatesDto>> FindAsync(string address)
+    public async Task<IEnumerable<AddressDto>> FindAsync(string searchTerm)
     {
-        throw new Exception("ЫВАыВаываыва");
-
-        EnsureValidAddress(address);
+        EnsureValidSearchTerm(searchTerm);
 
         using var httpClient = _httpClientFactory.CreateClient();
 
-        var request = CreateRequest(address);
+        var request = CreateRequest(searchTerm);
 
         using var response = await httpClient.SendAsync(request);
 
@@ -27,12 +24,12 @@ public sealed class OsmCoordinatesSearchService : ICoordinatesSearchService
 
         var rawCoordiantes = await response.Content.ReadFromJsonAsync<IEnumerable<Model>>();
 
-        var coordinates = Map(rawCoordiantes!);
+        var coordinates = MapResponse(rawCoordiantes!);
 
         return coordinates;
     }
 
-    private static void EnsureValidAddress(string address)
+    private static void EnsureValidSearchTerm(string address)
     {
         if (address is null)
         {
@@ -51,11 +48,12 @@ public sealed class OsmCoordinatesSearchService : ICoordinatesSearchService
             Headers = { { HeaderNames.UserAgent, "Other" } }
         };
 
-    private static IEnumerable<CoordinatesDto> Map(IEnumerable<Model> rawCoordiantes)
-        => rawCoordiantes!.Select(c => new CoordinatesDto(
-            Address: c.display_name,
-            Longitude: c.lon,
-            Latitude: c.lat
+    private static IEnumerable<AddressDto> MapResponse(IEnumerable<Model> rawCoordiantes)
+        => rawCoordiantes!.Select(
+            c => new AddressDto(
+                Address: c.display_name,
+                Lat: c.lat,
+                Lon: c.lon
         ));
 
     private sealed record Model(string display_name, string lon, string lat);

@@ -1,9 +1,12 @@
 using Serilog;
-using GeoService.API.CoordinatesSearchService;
 using GeoService.API.Infrastructure.CoordinatesSearchService;
 using Serilog.Events;
 using Serilog.Formatting.Compact;
 using Serilog.Exceptions;
+using GeoService.API.Domain.AdressesSearchService;
+using GeoService.API.Domain.NearbyAddressSearchService;
+using GeoService.API.Infrastructure.NearbyAddressSearchService;
+using Microsoft.Extensions.Configuration;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
@@ -11,6 +14,7 @@ Log.Logger = new LoggerConfiguration()
     .Enrich.WithExceptionDetails()
     .WriteTo.Console()
     .WriteTo.File(new CompactJsonFormatter(), "log.txt")
+    .WriteTo.Seq("http://localhost:5341")
     .CreateLogger();
 
 try
@@ -27,7 +31,11 @@ try
 
     builder.Services.AddHttpClient();
 
-    builder.Services.AddScoped<ICoordinatesSearchService, OsmCoordinatesSearchService>();
+    builder.Services.AddSingleton<IAdressesSearchService, OsmAdressesSearchService>();
+
+    builder.Services.AddSingleton<INearbyAddressSearchService>(
+        new DadataNearbyAddressSearchService(builder.Configuration.GetSection("Dadata").Get<DadataConfig>()!) 
+    );
 
     var app = builder.Build();
 
@@ -48,4 +56,3 @@ finally
 {
     Log.CloseAndFlush();
 }
-
